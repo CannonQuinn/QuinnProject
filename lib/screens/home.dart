@@ -7,6 +7,8 @@ import '../constants.dart'; //get our colors
 import '../models/questionmodel.dart';
 import '../widgets/question_widget.dart';
 import '../widgets/next_button.dart';
+import '../widgets/option_card.dart';
+import '../widgets/result.dart';
 
 //This creates the Home Screen widget
 
@@ -35,7 +37,7 @@ class _HomeScreenState extends State<HomeScreen> {
     Question(
       id: '3',
       title:'How many states does Mexico have?',
-      answer: {'27': true, '18': false, '50': false, '32': true}
+      answer: {'27': false, '18': false, '50': false, '32': true}
     ),
     Question(
       id: '4',
@@ -83,16 +85,89 @@ class _HomeScreenState extends State<HomeScreen> {
   //this is to help us go through the qs
   int index = 0;
 
+  //store the score
+  int score = 0;
+
+  //helps us hide answers
+  bool isPressed = false;
+
+  //prevent infinite scoring
+  bool isAlreadySelected = false;
+  
   void nextQuestion(){
+    
     if(index == _questions.length - 1){
+      showDialog(
+        context: context, 
+        builder: (ctx) => ResultBox(
+            result: score,
+            questionLength: _questions.length,
+            onPressed: startOver,
+          )
+      
+      );
       return;
     }
     else{
-      setState(() {
-        index++;
-      });
+      if(isPressed){
+        setState(() {
+          index++;
+          isPressed = false;
+          isAlreadySelected = false;
+        });
+      }
+      
+      else{
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please select an answer.'),
+            behavior: SnackBarBehavior.floating, 
+            margin: EdgeInsets.symmetric(vertical: 20.0),
+          )
+        );
+      }
+      
     }
 
+  }
+
+  //enable a redo
+  void startOver(){
+    setState((){
+      index = 0;
+      score = 0;
+      isPressed = false;
+      isAlreadySelected = false;
+
+    });
+    Navigator.pop(context);
+  }
+
+  //implements hiding answers w/ function made in option card
+  void checkUpdate(bool value) {
+    
+    //stop infinite scoring
+    if (isAlreadySelected){
+      return;
+    }
+    
+    //give point
+    if (value == true){
+      score++;
+      setState(() {
+        isPressed = true;
+        isAlreadySelected = true;
+      });
+    }
+    
+    //allows to move on from wrong answer
+    else{
+      setState(() {
+        isPressed = true;
+        isAlreadySelected = true;
+      });
+    }
+    
   }
 
   @override
@@ -100,9 +175,18 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: background,
       appBar: AppBar(
-        title: const Text('Geography Test'),
+        title: const Text('Geography Test', style: TextStyle(color: Colors.white) ),
         backgroundColor: background,
-        shadowColor: Colors.transparent,
+        shadowColor: Color.fromARGB(197, 255, 243, 243),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.all(18.0), 
+            child: Text(
+              'Score: $score',
+              style: const TextStyle(fontSize: 18.0, color: Colors.white),
+            ), 
+          ),
+        ]
       ),
       body: Container(
         width: double.infinity,
@@ -118,7 +202,18 @@ class _HomeScreenState extends State<HomeScreen> {
 
             const SizedBox(height: 25.0),
             for(int i = 0; i < _questions[index].answer.length; i++)
-              Card(child: Text(_questions[index].answer.keys.toList()[i]),)
+              GestureDetector(
+                onTap: () => checkUpdate(_questions[index].answer.values.toList()[i]),
+                child: OptionCard(
+                  option: _questions[index].answer.keys.toList()[i],
+                  //check status
+                  color: isPressed
+                  ? _questions[index].answer.values.toList()[i] == true 
+                    ? correct
+                    : incorrect
+                  :neutral,   
+                ),
+              ),
           ],)
       ),
 
